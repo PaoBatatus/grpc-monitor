@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#173F2A">
+<title>gRPC Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--g9:#173F2A;--g8:#1f5237;--g7:#2F7D4F;--g1:#e3efe7;--bg:#f4f6f1;--card:#fff;--ink:#16241b;--mut:#5d6d62;--line:#dde4dc;--gold:#C9A227;--red:#c0392b;--blue:#3B82A0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,.num{font-family:Georgia,"Times New Roman",serif}
+nav{background:var(--g9);color:#fff;display:flex;align-items:center;gap:16px;padding:12px max(20px,calc((100% - 1240px)/2 + 20px));flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.12em;font-size:15px;margin-right:auto}
+.pill{display:inline-flex;align-items:center;gap:7px;background:#ffffff1a;border-radius:99px;padding:5px 13px;font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:#7bd99b}
+.dot.off{background:#f08a7e}.dot.pause{background:var(--gold)}
+select,button{font:inherit;font-size:13px;border-radius:8px;border:1px solid #ffffff44;background:#ffffff14;color:#fff;padding:6px 12px;cursor:pointer}
+select option{color:#000}
+button:hover{background:#ffffff2e}
+button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.hero{background:linear-gradient(180deg,var(--g9),var(--g8));color:#fff;padding:34px max(20px,calc((100% - 1240px)/2 + 20px)) 52px}
+.hero h1{font-size:clamp(28px,4vw,44px);margin:0 0 8px;max-width:760px;line-height:1.15}
+.hero p{margin:0 0 26px;color:#cfe3d6;max-width:640px;line-height:1.55}
+.flow{display:flex;align-items:center;gap:0;flex-wrap:wrap}
+.node{background:#ffffff14;border:1px solid #ffffff30;border-radius:12px;padding:12px 16px;min-width:130px}
+.node b{display:block;font-size:14px}.node span{font-size:12px;color:#b9d3c3}
+.link{flex:1;min-width:70px;max-width:150px;text-align:center;font-size:11px;color:#b9d3c3;position:relative;padding-top:4px}
+.link::after{content:"";display:block;height:2px;margin-top:6px;background:repeating-linear-gradient(90deg,#7bd99b 0 8px,transparent 8px 16px);background-size:16px 2px;animation:run 0.8s linear infinite}
+@keyframes run{to{background-position:16px 0}}
+@media (prefers-reduced-motion:reduce){.link::after{animation:none}}
+main{max-width:1240px;margin:-30px auto 40px;padding:0 20px}
+.row{display:grid;gap:16px;margin-bottom:16px}
+.k4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.r2{grid-template-columns:repeat(auto-fit,minmax(360px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.card h2{font-size:17px;margin:0 0 2px}
+.sub{font-size:13px;color:var(--mut);margin-bottom:12px}
+.num{font-size:38px;font-weight:700;line-height:1.1}
+.kpi small{color:var(--mut);font-size:13px}
+.kpi.hl{background:var(--g9);color:#fff;border-color:var(--g9)}.kpi.hl small{color:#b9d3c3}
+.chart{position:relative;height:250px}
+.agent{display:flex;flex-direction:column;gap:10px}
+.ag{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.ag.alert{border-color:var(--red);background:#fdf3f1}
+.ag header{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:14px;margin-bottom:8px}
+.tag{font-size:11px;padding:2px 9px;border-radius:99px;background:var(--g1);color:var(--g9);font-weight:600}
+.alert .tag{background:var(--red);color:#fff}
+.meter{display:grid;grid-template-columns:38px 1fr 52px;align-items:center;gap:8px;font-size:12px;color:var(--mut);margin:4px 0}
+.track{height:8px;background:#e8ede6;border-radius:99px;overflow:hidden}
+.fill{height:100%;width:0;border-radius:99px;transition:width .4s}
+.cmp{margin-top:6px}
+.bar{height:26px;border-radius:7px;margin:6px 0;display:flex;align-items:center;padding-left:10px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap;transition:width .4s;min-width:90px}
+.btn{background:var(--g9);color:#fff;border:0;padding:10px 16px;border-radius:9px;font-weight:600}
+.btn:hover{background:var(--g7)}
+.out{margin-top:12px;font-size:14px;line-height:1.7;min-height:64px;background:var(--g1);border-radius:10px;padding:10px 14px}
+.logbox{max-height:230px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;color:var(--mut);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+td{padding:6px 8px;border-bottom:1px solid #eef2ec;font-variant-numeric:tabular-nums}
+tr.hot td{color:var(--red);font-weight:600}
+footer{text-align:center;color:var(--mut);font-size:12px;padding-bottom:30px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand">gRPC MONITOR</div>
+  <span class="pill"><span class="dot off" id="dot"></span><span id="status">conectando</span></span>
+  <label class="pill">Intervalo
+    <select id="interval"><option value="500">0,5 s</option><option value="1000" selected>1 s</option><option value="2000">2 s</option></select>
+  </label>
+  <button id="toggle">Pausar stream</button>
+</nav>
+
+<section class="hero">
+  <h1>Três agentes, uma conexão HTTP/2, métricas em tempo real.</h1>
+  <p>Cada agente transmite CPU e RAM por Server Streaming. O gateway recebe tudo por gRPC e entrega ao navegador, que só mostra o resultado.</p>
+  <div class="flow">
+    <div class="node"><b>3 Agentes</b><span>servidor gRPC :50051</span></div>
+    <div class="link">gRPC · HTTP/2<br>Protobuf</div>
+    <div class="node"><b>Gateway</b><span>cliente gRPC · Node</span></div>
+    <div class="link">SSE · JSON</div>
+    <div class="node"><b>Navegador</b><span>este painel</span></div>
+  </div>
+</section>
+
+<main>
+  <div class="row k4">
+    <div class="card kpi"><small>CPU média (agentes)</small><div class="num" id="kCpu">--</div></div>
+    <div class="card kpi"><small>RAM média (agentes)</small><div class="num" id="kRam">--</div></div>
+    <div class="card kpi"><small>Mensagens recebidas via gRPC</small><div class="num" id="kMsg">0</div></div>
+    <div class="card kpi hl"><small>Economia de bytes (Protobuf vs JSON)</small><div class="num" id="kSave">--</div></div>
+  </div>
+
+  <div class="row r2">
+    <div class="card"><h2>CPU por agente</h2><div class="sub">Últimos 30 pontos</div><div class="chart"><canvas id="cCpu"></canvas></div></div>
+    <div class="card"><h2>RAM por agente</h2><div class="sub">Últimos 30 pontos</div><div class="chart"><canvas id="cRam"></canvas></div></div>
+  </div>
+
+  <div class="row r2">
+    <div class="card"><h2>Estado atual</h2><div class="sub">Alerta quando a CPU passa de 85%</div><div class="agent" id="agents"></div></div>
+    <div class="card"><h2>Comparação instantânea</h2><div class="sub">CPU e RAM de cada agente agora</div><div class="chart" style="height:300px"><canvas id="cBar"></canvas></div></div>
+  </div>
+
+  <div class="row r2">
+    <div class="card">
+      <h2>Protobuf vs JSON</h2><div class="sub">Bytes acumulados das mesmas mensagens</div>
+      <div class="chart" style="height:200px"><canvas id="cBytes"></canvas></div>
+      <div class="cmp">
+        <div class="bar" id="bJs" style="background:#d9822b;width:100%">JSON: 0 B</div>
+        <div class="bar" id="bPb" style="background:var(--g7);width:40%">Protobuf: 0 B</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Chamada Unary</h2><div class="sub">1 pedido, 1 resposta (GetSnapshot)</div>
+      <button class="btn" id="snap">Chamar GetSnapshot</button>
+      <div class="out" id="snapOut">Clique no botão para fazer uma chamada Unary e medir a latência.</div>
+      <h2 style="margin-top:18px">Log do stream</h2><div class="sub">Mensagens mais recentes</div>
+      <div class="logbox"><table><thead><tr><th>Hora</th><th>Agente</th><th>CPU</th><th>RAM</th><th>PB / JSON</th></tr></thead><tbody id="log"></tbody></table></div>
+    </div>
+  </div>
+</main>
+<footer>UTFPR · Tecnologia em Desenvolvimento de Sistemas · Seminário gRPC</footer>
+
+<script>
+const AG = ['agente-1','agente-2','agente-3'], COL = ['#2F7D4F','#C9A227','#3B82A0'], MAXP = 30;
+const $ = id => document.getElementById(id);
+Chart.defaults.font.family = 'system-ui'; Chart.defaults.color = '#5d6d62';
+
+const line = id => new Chart($(id), { type:'line',
+  data:{ labels:[], datasets: AG.map((a,i)=>({ label:a, data:[], borderColor:COL[i], backgroundColor:COL[i]+'22', fill:true, tension:.35, pointRadius:0, borderWidth:2 })) },
+  options:{ animation:false, maintainAspectRatio:false, scales:{ y:{ min:0, max:100, ticks:{ callback:v=>v+'%' } } }, plugins:{ legend:{ position:'bottom' } } } });
+const cCpu = line('cCpu'), cRam = line('cRam');
+
+const cBar = new Chart($('cBar'), { type:'bar',
+  data:{ labels:AG, datasets:[
+    { label:'CPU %', data:[0,0,0], backgroundColor:'#2F7D4F', borderRadius:6 },
+    { label:'RAM %', data:[0,0,0], backgroundColor:'#C9A227', borderRadius:6 } ] },
+  options:{ maintainAspectRatio:false, scales:{ y:{ min:0, max:100 } }, plugins:{ legend:{ position:'bottom' } } } });
+
+const cBytes = new Chart($('cBytes'), { type:'line',
+  data:{ labels:[], datasets:[
+    { label:'JSON (KB)', data:[], borderColor:'#d9822b', backgroundColor:'#d9822b22', fill:true, pointRadius:0, tension:.2 },
+    { label:'Protobuf (KB)', data:[], borderColor:'#2F7D4F', backgroundColor:'#2F7D4F22', fill:true, pointRadius:0, tension:.2 } ] },
+  options:{ animation:false, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } } });
+
+// cartões dos agentes
+$('agents').innerHTML = AG.map((a,i)=>`
+  <div class="ag" id="ag${i}"><header><span style="color:${COL[i]}">&#9679; ${a}</span><span class="tag" id="tg${i}">normal</span></header>
+    <div class="meter"><span>CPU</span><div class="track"><div class="fill" id="fc${i}" style="background:${COL[i]}"></div></div><b id="vc${i}">--</b></div>
+    <div class="meter"><span>RAM</span><div class="track"><div class="fill" id="fr${i}" style="background:#8aa396"></div></div><b id="vr${i}">--</b></div>
+  </div>`).join('');
+
+const last = [{cpu:0,ram:0},{cpu:0,ram:0},{cpu:0,ram:0}];
+let msgs = 0, totPb = 0, totJs = 0, es = null, paused = false;
+const fmt = n => n < 1024 ? n + ' B' : (n/1024).toFixed(1) + ' KB';
+
+function onMsg(e) {
+  const { m, pb, js } = JSON.parse(e.data);
+  const i = AG.indexOf(m.agent_id); if (i < 0) return;
+  last[i] = { cpu:m.cpu_percent, ram:m.ram_percent };
+  msgs++; totPb += pb; totJs += js;
+
+  // cartão do agente
+  const hot = m.cpu_percent > 85;
+  $('ag'+i).classList.toggle('alert', hot);
+  $('tg'+i).textContent = hot ? 'CPU alta' : 'normal';
+  $('fc'+i).style.width = m.cpu_percent + '%'; $('vc'+i).textContent = m.cpu_percent + '%';
+  $('fr'+i).style.width = m.ram_percent + '%'; $('vr'+i).textContent = m.ram_percent + '%';
+
+  // KPIs
+  const avg = k => (last.reduce((s,x)=>s+x[k],0)/3).toFixed(1) + '%';
+  $('kCpu').textContent = avg('cpu'); $('kRam').textContent = avg('ram');
+  $('kMsg').textContent = msgs;
+  $('kSave').textContent = Math.round((1 - totPb/totJs)*100) + '%';
+  $('bJs').textContent = 'JSON: ' + fmt(totJs);
+  $('bPb').textContent = 'Protobuf: ' + fmt(totPb);
+  $('bPb').style.width = Math.max(8, totPb/totJs*100) + '%';
+
+  // gráficos de tempo: um ponto por rodada (quando chega o agente-1)
+  if (i === 0) {
+    const t = new Date(m.timestamp).toLocaleTimeString();
+    [[cCpu,'cpu'],[cRam,'ram']].forEach(([c,k])=>{
+      c.data.labels.push(t);
+      c.data.datasets.forEach((d,j)=>d.data.push(last[j][k]));
+      if (c.data.labels.length > MAXP) { c.data.labels.shift(); c.data.datasets.forEach(d=>d.data.shift()); }
+      c.update();
+    });
+    cBytes.data.labels.push(t);
+    cBytes.data.datasets[0].data.push(+(totJs/1024).toFixed(2));
+    cBytes.data.datasets[1].data.push(+(totPb/1024).toFixed(2));
+    if (cBytes.data.labels.length > 60) { cBytes.data.labels.shift(); cBytes.data.datasets.forEach(d=>d.data.shift()); }
+    cBytes.update();
+  }
+  cBar.data.datasets[0].data = last.map(x=>x.cpu);
+  cBar.data.datasets[1].data = last.map(x=>x.ram);
+  cBar.update();
+
+  // log
+  const tr = document.createElement('tr'); if (hot) tr.className = 'hot';
+  tr.innerHTML = `<td>${new Date(m.timestamp).toLocaleTimeString()}</td><td>${m.agent_id}</td><td>${m.cpu_percent}%</td><td>${m.ram_percent}%</td><td>${pb} / ${js} B</td>`;
+  $('log').prepend(tr);
+  while ($('log').children.length > 30) $('log').lastChild.remove();
+}
+
+function setStatus(txt, cls) { $('status').textContent = txt; $('dot').className = 'dot ' + cls; }
+
+function connect() {
+  if (es) es.close();
+  es = new EventSource('/events?interval=' + $('interval').value);
+  es.onopen = () => setStatus('stream ativo (3 agentes)', '');
+  es.onerror = () => setStatus('desconectado', 'off');
+  es.onmessage = onMsg;
+}
+
+$('interval').onchange = () => { if (!paused) connect(); };
+$('toggle').onclick = () => {
+  paused = !paused;
+  if (paused) { es.close(); setStatus('pausado', 'pause'); }
+  else connect();
+  $('toggle').textContent = paused ? 'Retomar stream' : 'Pausar stream';
+};
+
+$('snap').onclick = async () => {
+  $('snapOut').textContent = 'Chamando...';
+  try {
+    const r = await fetch('/snapshot'); const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    $('snapOut').innerHTML = `<b>${d.m.agent_id}</b> respondeu uma única vez<br>CPU ${d.m.cpu_percent}% · RAM ${d.m.ram_percent}%<br>Latência gRPC: <b>${d.ms.toFixed(2)} ms</b>`;
+  } catch (err) {
+    $('snapOut').textContent = 'Falha: servidor gRPC fora do ar. Inicie node server/server.js.';
+  }
+};
+
+connect();
+</script>
+</body>
+</html>

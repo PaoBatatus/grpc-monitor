@@ -1,0 +1,21 @@
+syntax = "proto3";
+package monitor;
+
+service MonitorService {
+  rpc GetSnapshot (Empty) returns (Metric);                  // Unary
+  rpc StreamMetrics (StreamRequest) returns (stream Metric); // Server Streaming
+}
+
+message Empty {}
+
+message StreamRequest {
+  string agent_id = 1;
+  int32 interval_ms = 2;
+}
+
+message Metric {
+  string agent_id = 1;
+  double cpu_percent = 2;
+  double ram_percent = 3;
+  int64 timestamp = 4;
+}
